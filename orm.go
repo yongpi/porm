@@ -87,6 +87,18 @@ func (o *orm) RollBack() error {
 	return o.tx.Rollback()
 }
 
+func (o *orm) MustRollBack() {
+	if o.tx == nil {
+		panic("[porm:orm:MustRollBack]:orm tx can not be nil")
+	}
+
+	plog.Infof("[porm:orm:MustRollBack]: rollback tx, db = %s", o.StorageName())
+	err := o.tx.Rollback()
+	if err != nil {
+		panic(fmt.Errorf("[porm:orm:MustRollBack]: rollback error, err = %s", err.Error()))
+	}
+}
+
 func (o *orm) Transaction(ctx context.Context, fun func(ctx context.Context, orm *orm) error) error {
 	no, err := o.BeginTx(ctx)
 	if err != nil {
@@ -99,7 +111,7 @@ func (o *orm) Transaction(ctx context.Context, fun func(ctx context.Context, orm
 	defer WithTxContext(ctx, nil)
 	defer func() {
 		if err := recover(); err != nil {
-			_ = no.RollBack()
+			no.MustRollBack()
 			panic(err)
 		}
 	}()
@@ -174,7 +186,8 @@ func (o *orm) Select(ctx context.Context, st *psql.SelectTransform, model interf
 		return o.err
 	}
 	defer func() {
-		o.err = stmt.Close()
+		err := stmt.Close()
+		plog.WithError(err).Error("[porm:orm:Select]: stmt close fail")
 	}()
 
 	err = stmt.QueryContextP(ctx, model, args...)
@@ -211,7 +224,12 @@ func (o *orm) SelectX(ctx context.Context, query string, args ...interface{}) (*
 		o.err = err
 		return nil, o.err
 	}
-	defer func() { _ = stmt.Close() }()
+	defer func() {
+		err := stmt.Close()
+		if err != nil {
+			plog.WithError(err).Error("[porm:orm:SelectX]: stmt close fail")
+		}
+	}()
 
 	rows, err := stmt.QueryContext(ctx, args...)
 	if err != nil {

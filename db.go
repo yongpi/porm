@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"reflect"
+
+	"github.com/yongpi/putil/plog"
 )
 
 type MapperGetter interface {
@@ -166,8 +168,6 @@ func QueryScan(ctx context.Context, qi Query, dest interface{}, query string, ar
 	if err != nil {
 		return err
 	}
-
-	defer func() { _ = rows.Close() }()
 	return Scan(qi.Mapper(), dest, rows)
 }
 
@@ -176,12 +176,17 @@ func StmtQueryScan(ctx context.Context, qi StmtQuery, dest interface{}, args ...
 	if err != nil {
 		return err
 	}
-
-	defer func() { _ = rows.Close() }()
 	return Scan(qi.Mapper(), dest, rows)
 }
 
 func Scan(mapper *mapper, dest interface{}, rows *sql.Rows) error {
+	defer func() {
+		err := rows.Close()
+		if err != nil {
+			plog.WithError(err).Errorf("[porm:Scan]: rows close fail")
+		}
+	}()
+
 	if mapper == nil {
 		return fmt.Errorf("[porm:Scan]:mapper can not be nil")
 	}
