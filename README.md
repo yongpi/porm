@@ -74,7 +74,7 @@ func init() {
 	RegisterMasterSlaveStorage(msc)
 }
 
-type AlbumAuthorModel struct {
+type AuthorModel struct {
 	ID        int64 `porm:"pk"`
 	Name      string
 	Artwork   string
@@ -85,12 +85,12 @@ type AlbumAuthorModel struct {
 	UpdatedAt Time `porm:"readonly"`
 }
 
-func (m *AlbumAuthorModel) TableName() string {
-	return "album_author"
+func (m *AuthorModel) TableName() string {
+	return "author"
 }
 
 func TestSimple(t *testing.T) {
-	var m AlbumAuthorModel
+	var m AuthorModel
 	ctx := context.Background()
 	st := psql.Select("*").Where(psql.Eq{"id": 1})
 
@@ -99,7 +99,7 @@ func TestSimple(t *testing.T) {
 		t.Error(err)
 	}
 
-	var list []*AlbumAuthorModel
+	var list []*AuthorModel
 	st = psql.Select("*").Where(psql.Eq{"id": []int64{1, 2}})
 	err = ORM().Select(ctx, st, &list)
 	if err != nil {
@@ -137,7 +137,7 @@ func TestSimple(t *testing.T) {
 }
 
 func TestMasterSlave(t *testing.T) {
-	var m AlbumAuthorModel
+	var m AuthorModel
 	ctx := context.Background()
 	st := psql.Select("*").Where(psql.Eq{"id": 1})
 
@@ -161,7 +161,7 @@ func TestMasterSlave(t *testing.T) {
 func TestOrm_Transaction(t *testing.T) {
 	ctx := context.Background()
 	err := ORM().Transaction(ctx, func(ctx context.Context, orm *orm) error {
-		var m AlbumAuthorModel
+		var m AuthorModel
 
 		st := psql.Select("*").Where(psql.Eq{"id": 1})
 		err := orm.Select(ctx, st, &m)
@@ -186,5 +186,6 @@ func TestOrm_Transaction(t *testing.T) {
 		t.Error(err)
 	}
 }
+   
 
 ```
