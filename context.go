@@ -8,7 +8,7 @@ type contextKey struct {
 	Name string
 }
 
-func txORMFromContext(ctx context.Context) *orm {
+func TxORMFromContext(ctx context.Context) *orm {
 	value := ctx.Value(transactionKey)
 	if orm, ok := value.(*orm); ok {
 		return orm

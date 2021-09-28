@@ -77,7 +77,7 @@ type SelectHook struct {
 }
 
 func (t *SelectHook) BeforeHook(ctx context.Context, orm *orm) {
-	no := txORMFromContext(ctx)
+	no := TxORMFromContext(ctx)
 	if no == nil {
 		return
 	}

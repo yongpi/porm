@@ -52,7 +52,7 @@ func (o *orm) Copy(dest *orm) {
 }
 
 func (o *orm) BeginTx(ctx context.Context) (*orm, error) {
-	to := txORMFromContext(ctx)
+	to := TxORMFromContext(ctx)
 	if to != nil && to.StorageName() == o.StorageName() {
 		plog.Infof("[porm:orm:BeginTx]: begin tx from context, db = %s", to.StorageName())
 		return to, nil
