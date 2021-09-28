@@ -1,6 +1,6 @@
 # porm
 简单易用的 `go orm` 框架，练手之作。参考了 `sqlx` 和 `gorm`，整体只依赖 `github.com/yongpi/putil`
-而 `putil` 只依赖 ￿￿`go sdk`， so clean !!!
+而 `putil` 只依赖 `go sdk`， so clean !!!
 ## 用法介绍
 ### 专属 `tag`
 参考了 `gorm`, 有一些结构体字段需要执行特殊逻辑，加了 `tag` 来标识。主要有
