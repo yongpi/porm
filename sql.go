@@ -12,7 +12,7 @@ type SqlNeed struct {
 	TableName string
 }
 
-func FillSelect(mapper *mapper, st *psql.SelectTransform, model interface{}, holderType psql.PlaceHolderType) error {
+func FillSelect(mapper *mapper, st *psql.SelectStatement, model interface{}, holderType psql.PlaceHolderType) error {
 	if len(st.Columns) == 0 || st.Columns[0] == "*" {
 		columns, err := PickUpColumns(mapper, model)
 		if err != nil {
@@ -35,7 +35,7 @@ func FillSelect(mapper *mapper, st *psql.SelectTransform, model interface{}, hol
 	return nil
 }
 
-func FillInsert(mapper *mapper, st *psql.InsertTransform, model interface{}, holderType psql.PlaceHolderType) error {
+func FillInsert(mapper *mapper, st *psql.InsertStatement, model interface{}, holderType psql.PlaceHolderType) error {
 	st.HolderType = holderType
 
 	value := reflect.Indirect(reflect.ValueOf(model))
@@ -50,7 +50,7 @@ func FillInsert(mapper *mapper, st *psql.InsertTransform, model interface{}, hol
 	return BuilderInsertList(mapper, st, value)
 }
 
-func BuilderInsertOne(mapper *mapper, st *psql.InsertTransform, value reflect.Value) error {
+func BuilderInsertOne(mapper *mapper, st *psql.InsertStatement, value reflect.Value) error {
 	sm, err := mapper.Load(value.Type())
 	if err != nil {
 		return err
@@ -74,7 +74,7 @@ func BuilderInsertOne(mapper *mapper, st *psql.InsertTransform, value reflect.Va
 	return nil
 }
 
-func BuilderInsertList(mapper *mapper, st *psql.InsertTransform, value reflect.Value) error {
+func BuilderInsertList(mapper *mapper, st *psql.InsertStatement, value reflect.Value) error {
 	if value.Kind() != reflect.Slice && value.Kind() != reflect.Array {
 		return fmt.Errorf("[porm:BuilderInsertList] model must be array or slice")
 	}
@@ -133,7 +133,7 @@ func BuilderInsertList(mapper *mapper, st *psql.InsertTransform, value reflect.V
 	return nil
 }
 
-func FillUpdate(st *psql.UpdateTransform, model interface{}, holderType psql.PlaceHolderType) error {
+func FillUpdate(st *psql.UpdateStatement, model interface{}, holderType psql.PlaceHolderType) error {
 	if st.TableName == "" {
 		tableName, err := PickUpTable(model)
 		if err != nil {
@@ -148,7 +148,7 @@ func FillUpdate(st *psql.UpdateTransform, model interface{}, holderType psql.Pla
 	return nil
 }
 
-func FillDelete(st *psql.DeleteTransform, model interface{}, holderType psql.PlaceHolderType) error {
+func FillDelete(st *psql.DeleteStatement, model interface{}, holderType psql.PlaceHolderType) error {
 	if st.TableName == "" {
 		tableName, err := PickUpTable(model)
 		if err != nil {

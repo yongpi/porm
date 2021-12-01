@@ -35,12 +35,13 @@ func NORM(storageName string) *orm {
 }
 
 type orm struct {
-	storage     Storage
-	sqlAction   SqlAction
-	forceMaster bool
-	tx          *Tx
-	err         error
-	inTx        bool
+	storage      Storage
+	sqlAction    SqlAction
+	forceMaster  bool
+	tx           *Tx
+	err          error
+	inTx         bool
+	sqlStatement psql.SqlStatement
 }
 
 func (o *orm) Copy(dest *orm) {
@@ -149,10 +150,19 @@ func (o *orm) ForceMaster() *orm {
 	return o
 }
 
-func (o *orm) Select(ctx context.Context, st *psql.SelectTransform, model interface{}) error {
+func (o *orm) WithStatement(statement psql.SqlStatement) *orm {
+	o.sqlStatement = statement
+	return o
+}
+
+func (o *orm) Select(ctx context.Context, model interface{}) error {
 	o.sqlAction = Select
-	if nil == st {
+	if o.sqlStatement == nil {
 		return fmt.Errorf("[porm:orm:Select] st can not be nil")
+	}
+	st, ok := o.sqlStatement.(*psql.SelectStatement)
+	if !ok {
+		return fmt.Errorf("[porm:orm:Select] statement must be *psql.SelectStatement")
 	}
 
 	err := FillSelect(o.Mapper(), st, model, o.SqlBuilder().HolderType)
@@ -186,8 +196,9 @@ func (o *orm) Select(ctx context.Context, st *psql.SelectTransform, model interf
 		return o.err
 	}
 	defer func() {
-		err := stmt.Close()
-		plog.WithError(err).Error("[porm:orm:Select]: stmt close fail")
+		if err := stmt.Close(); err != nil {
+			plog.WithError(err).Error("[porm:orm:Select]: stmt close fail")
+		}
 	}()
 
 	err = stmt.QueryContextP(ctx, model, args...)
@@ -197,6 +208,37 @@ func (o *orm) Select(ctx context.Context, st *psql.SelectTransform, model interf
 	}
 
 	return o.err
+}
+
+func (o *orm) SelectWithCount(ctx context.Context, model interface{}, count *int64) error {
+	err := o.Select(ctx, model)
+	if err != nil {
+		return err
+	}
+
+	st, ok := o.sqlStatement.(*psql.SelectStatement)
+	if !ok {
+		return fmt.Errorf("[porm:orm:Select] statement must be *psql.SelectStatement")
+	}
+
+	st.Columns = []string{"COUNT(1)"}
+	query, args, err := st.ToSql()
+	if err != nil {
+		return err
+	}
+	rows, err := o.SelectX(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+
+	if rows.Next() {
+		err = rows.Scan(count)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (o *orm) SelectX(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
@@ -264,9 +306,14 @@ func (o *orm) exec(ctx context.Context, query string, args ...interface{}) (resu
 
 }
 
-func (o *orm) Update(ctx context.Context, st *psql.UpdateTransform, model interface{}) (sql.Result, error) {
-	if st == nil {
+func (o *orm) Update(ctx context.Context, model interface{}) (sql.Result, error) {
+	if o.sqlStatement == nil {
 		return nil, fmt.Errorf("[porm:orm:Update] st can not be nil")
+	}
+
+	st, ok := o.sqlStatement.(*psql.UpdateStatement)
+	if !ok {
+		return nil, fmt.Errorf("[porm:orm:Update] statement must be *psql.UpdateStatement")
 	}
 
 	err := FillUpdate(st, model, o.SqlBuilder().HolderType)
@@ -333,9 +380,14 @@ func (o *orm) UpdateModel(ctx context.Context, model interface{}) (sql.Result, e
 	return o.UpdateX(ctx, query, args...)
 }
 
-func (o *orm) Delete(ctx context.Context, st *psql.DeleteTransform, model interface{}) (sql.Result, error) {
-	if st == nil {
+func (o *orm) Delete(ctx context.Context, model interface{}) (sql.Result, error) {
+	if o.sqlStatement == nil {
 		return nil, fmt.Errorf("[porm:orm:Delete] st can not be nil")
+	}
+
+	st, ok := o.sqlStatement.(*psql.DeleteStatement)
+	if !ok {
+		return nil, fmt.Errorf("[porm:orm:Delete] statement must be *psql.DeleteStatement")
 	}
 
 	err := FillDelete(st, model, o.SqlBuilder().HolderType)

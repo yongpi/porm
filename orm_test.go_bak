@@ -67,17 +67,20 @@ func TestSimple(t *testing.T) {
 	ctx := context.Background()
 	st := psql.Select("*").Where(psql.Eq{"id": 1})
 
-	err := ORM().Select(ctx, st, &m)
+	err := ORM().WithStatement(st).Select(ctx, &m)
 	if err != nil {
 		t.Error(err)
 	}
 
 	var list []*AuthorModel
 	st = psql.Select("*").Where(psql.Eq{"id": []int64{1, 2}})
-	err = ORM().Select(ctx, st, &list)
+	var count int64
+	err = ORM().WithStatement(st).SelectWithCount(ctx, &list, &count)
 	if err != nil {
 		t.Error(err)
 	}
+
+	fmt.Println(count)
 
 	m.Name = "up"
 	m.MemberID.SetInt64(123)
@@ -114,7 +117,7 @@ func TestMasterSlave(t *testing.T) {
 	ctx := context.Background()
 	st := psql.Select("*").Where(psql.Eq{"id": 1})
 
-	err := NORM("ms").Select(ctx, st, &m)
+	err := NORM("ms").WithStatement(st).Select(ctx, &m)
 	if err != nil {
 		t.Error(err)
 	}
@@ -137,7 +140,7 @@ func TestOrm_Transaction(t *testing.T) {
 		var m AuthorModel
 
 		st := psql.Select("*").Where(psql.Eq{"id": 1})
-		err := orm.Select(ctx, st, &m)
+		err := orm.WithStatement(st).Select(ctx, &m)
 		if err != nil {
 			return err
 		}
