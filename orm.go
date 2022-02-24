@@ -218,14 +218,18 @@ func (o *orm) SelectWithCount(ctx context.Context, model interface{}, count *int
 
 	st, ok := o.sqlStatement.(*psql.SelectStatement)
 	if !ok {
-		return fmt.Errorf("[porm:orm:Select] statement must be *psql.SelectStatement")
+		return fmt.Errorf("[porm:orm:SelectWithCount] statement must be *psql.SelectStatement")
 	}
 
 	st.Columns = []string{"COUNT(1)"}
+	st.LimitValue = nil
+	st.OffsetValue = nil
+
 	query, args, err := st.ToSql()
 	if err != nil {
 		return err
 	}
+
 	rows, err := o.SelectX(ctx, query, args...)
 	if err != nil {
 		return err
@@ -255,8 +259,11 @@ func (o *orm) SelectX(ctx context.Context, query string, args ...interface{}) (*
 	// 打印日志
 	plog.Debugf("[porm:orm:SelectX]: query sql = %s, args = %#v", query, args)
 
-	var stmt *Stmt
-	var err error
+	var (
+		stmt *Stmt
+		err  error
+	)
+
 	if o.tx != nil {
 		stmt, err = o.tx.PrepareContextP(ctx, query)
 	} else {
@@ -399,12 +406,12 @@ func (o *orm) Delete(ctx context.Context, model interface{}) (sql.Result, error)
 	if err != nil {
 		return nil, err
 	}
+
 	return o.DeleteX(ctx, query, args...)
 }
 
 func (o *orm) DeleteX(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	o.sqlAction = Delete
-
 	// 打印日志
 	plog.Debugf("[porm:orm:DeleteX]: query sql = %s, args = %#v", query, args)
 
