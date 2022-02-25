@@ -60,10 +60,6 @@ func (t *TxHook) BeginTxHook(ctx context.Context, orm *orm) {
 }
 
 func (t *TxHook) EndTxHook(ctx context.Context, orm *orm) {
-	if orm.inTx {
-		return
-	}
-
 	if orm.err == nil {
 		orm.err = orm.Commit()
 		return

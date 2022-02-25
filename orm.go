@@ -40,7 +40,7 @@ type orm struct {
 	forceMaster  bool
 	tx           *Tx
 	err          error
-	inTx         bool
+	txCount      int64
 	sqlStatement psql.SqlStatement
 }
 
@@ -48,14 +48,17 @@ func (o *orm) Copy(dest *orm) {
 	o.storage = dest.storage
 	o.tx = dest.tx
 	o.forceMaster = dest.forceMaster
-	o.inTx = dest.inTx
+	o.txCount = dest.txCount
 	o.err = dest.err
 }
 
 func (o *orm) BeginTx(ctx context.Context) (*orm, error) {
 	to := TxORMFromContext(ctx)
 	if to != nil && to.StorageName() == o.StorageName() {
+
 		plog.Infof("[porm:orm:BeginTx]: begin tx from context, db = %s", to.StorageName())
+
+		to.txCount++
 		return to, nil
 	}
 
@@ -67,36 +70,53 @@ func (o *orm) BeginTx(ctx context.Context) (*orm, error) {
 	o.tx = tx
 
 	plog.Infof("[porm:orm:BeginTx]: begin tx, db = %s", o.StorageName())
+
+	o.txCount++
 	return o, nil
 }
 
 func (o *orm) Commit() error {
+	o.txCount--
 	if o.tx == nil {
 		return fmt.Errorf("[porm:orm:Commit]:orm tx can not be nil")
 	}
 
 	plog.Infof("[porm:orm:Commit]: commit tx, db = %s", o.StorageName())
-	return o.tx.Commit()
+
+	if o.txCount == 0 {
+		return o.tx.Commit()
+	}
+
+	return nil
 }
 
 func (o *orm) RollBack() error {
+	o.txCount--
 	if o.tx == nil {
 		return fmt.Errorf("[porm:orm:RollBack]:orm tx can not be nil")
 	}
 
 	plog.Infof("[porm:orm:RollBack]: rollback tx, db = %s", o.StorageName())
-	return o.tx.Rollback()
+
+	if o.txCount == 0 {
+		return o.tx.Rollback()
+	}
+	return nil
 }
 
 func (o *orm) MustRollBack() {
+	o.txCount--
 	if o.tx == nil {
 		panic("[porm:orm:MustRollBack]:orm tx can not be nil")
 	}
 
 	plog.Infof("[porm:orm:MustRollBack]: rollback tx, db = %s", o.StorageName())
-	err := o.tx.Rollback()
-	if err != nil {
-		panic(fmt.Errorf("[porm:orm:MustRollBack]: rollback error, err = %s", err.Error()))
+
+	if o.txCount == 0 {
+		err := o.tx.Rollback()
+		if err != nil {
+			panic(fmt.Errorf("[porm:orm:MustRollBack]: rollback error, err = %s", err.Error()))
+		}
 	}
 }
 
@@ -105,8 +125,6 @@ func (o *orm) Transaction(ctx context.Context, fun func(ctx context.Context, orm
 	if err != nil {
 		return err
 	}
-
-	no.inTx = true
 
 	ctx = WithTxContext(ctx, no)
 	defer WithTxContext(ctx, nil)
