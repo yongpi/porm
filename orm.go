@@ -90,13 +90,13 @@ func (o *orm) Commit() error {
 	return nil
 }
 
-func (o *orm) RollBack() error {
+func (o *orm) Rollback() error {
 	o.txCount--
 	if o.tx == nil {
-		return fmt.Errorf("[porm:orm:RollBack]:orm tx can not be nil")
+		return fmt.Errorf("[porm:orm:Rollback]:orm tx can not be nil")
 	}
 
-	plog.Infof("[porm:orm:RollBack]: rollback tx, db = %s", o.StorageName())
+	plog.Infof("[porm:orm:Rollback]: rollback tx, db = %s", o.StorageName())
 
 	if o.txCount == 0 {
 		return o.tx.Rollback()
@@ -104,18 +104,18 @@ func (o *orm) RollBack() error {
 	return nil
 }
 
-func (o *orm) MustRollBack() {
+func (o *orm) MustRollback() {
 	o.txCount--
 	if o.tx == nil {
-		panic("[porm:orm:MustRollBack]:orm tx can not be nil")
+		panic("[porm:orm:MustRollback]:orm tx can not be nil")
 	}
 
-	plog.Infof("[porm:orm:MustRollBack]: rollback tx, db = %s", o.StorageName())
+	plog.Infof("[porm:orm:MustRollback]: rollback tx, db = %s", o.StorageName())
 
 	if o.txCount == 0 {
 		err := o.tx.Rollback()
 		if err != nil {
-			panic(fmt.Errorf("[porm:orm:MustRollBack]: rollback error, err = %s", err.Error()))
+			panic(fmt.Errorf("[porm:orm:MustRollback]: rollback error, err = %s", err.Error()))
 		}
 	}
 }
@@ -127,17 +127,16 @@ func (o *orm) Transaction(ctx context.Context, fun func(ctx context.Context, orm
 	}
 
 	ctx = WithTxContext(ctx, no)
-	defer WithTxContext(ctx, nil)
 	defer func() {
 		if err := recover(); err != nil {
-			no.MustRollBack()
+			no.MustRollback()
 			panic(err)
 		}
 	}()
 
 	err = fun(ctx, no)
 	if err != nil {
-		err2 := no.RollBack()
+		err2 := no.Rollback()
 		if err2 != nil {
 			return fmt.Errorf("[porm:orm:Transaction]: rollback fail, err = %s", err2)
 		}
@@ -171,6 +170,26 @@ func (o *orm) ForceMaster() *orm {
 func (o *orm) WithStatement(statement psql.SqlStatement) *orm {
 	o.sqlStatement = statement
 	return o
+}
+
+func (o *orm) SelectPK(ctx context.Context, id int64, model interface{}) error {
+	pk, err := PickUpPK(o.Mapper(), model)
+	if err != nil {
+		return err
+	}
+
+	statement := psql.Select("*").Where(psql.Eq{pk: id})
+	return o.WithStatement(statement).Select(ctx, model)
+}
+
+func (o *orm) SelectPKS(ctx context.Context, ids []int64, model interface{}) error {
+	pk, err := PickUpPK(o.Mapper(), model)
+	if err != nil {
+		return err
+	}
+
+	statement := psql.Select("*").Where(psql.Eq{pk: ids})
+	return o.WithStatement(statement).Select(ctx, model)
 }
 
 func (o *orm) Select(ctx context.Context, model interface{}) error {

@@ -228,7 +228,7 @@ func scanOne(mapper *mapper, dv reflect.Value, rows *sql.Rows) error {
 		return err
 	}
 
-	for rows.Next() {
+	if rows.Next() {
 		err = rows.Scan(values...)
 		return err
 	}

@@ -65,7 +65,7 @@ func (t *TxHook) EndTxHook(ctx context.Context, orm *orm) {
 		return
 	}
 
-	orm.err = orm.RollBack()
+	orm.err = orm.Rollback()
 	return
 }
 

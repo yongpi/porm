@@ -180,6 +180,44 @@ func PickUpColumns(mapper *mapper, model interface{}) ([]string, error) {
 	return mapper.Columns(met)
 }
 
+func PickUpPK(mapper *mapper, model interface{}) (string, error) {
+	mv := reflect.Indirect(reflect.ValueOf(model))
+	if mv.Kind() == reflect.Struct {
+		vt, err := mapper.Load(mv.Type())
+		if err != nil {
+			return "", err
+		}
+
+		for _, column := range vt.Columns {
+			if column.PK {
+				return column.Name, nil
+			}
+		}
+		return "", fmt.Errorf("struct has not pk, type = %s", mv.Type().String())
+	}
+
+	if mv.Kind() != reflect.Slice && mv.Kind() != reflect.Array {
+		return "", fmt.Errorf("[porm:fillList] model must be array or slice")
+	}
+
+	met := mv.Type().Elem()
+	if met.Kind() == reflect.Ptr {
+		met = met.Elem()
+	}
+
+	vt, err := mapper.Load(met)
+	if err != nil {
+		return "", err
+	}
+
+	for _, column := range vt.Columns {
+		if column.PK {
+			return column.Name, nil
+		}
+	}
+	return "", fmt.Errorf("struct has not pk, type = %s", met.String())
+}
+
 func PickUpTable(model interface{}) (string, error) {
 	mv := reflect.Indirect(reflect.ValueOf(model))
 	if mv.Kind() == reflect.Struct {
